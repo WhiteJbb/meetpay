@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Group {
+  id           String        @id @default(cuid())
+  name         String
+  baseCurrency String        @default("KRW")
+  // 열람 전용 결과 링크(/r/[token])용 토큰. 기존 행 호환을 위해 선택
+  // 필드로 두고, 없으면 접근 시점에 지연 발급한다.
+  viewToken    String?       @unique
+  createdAt    DateTime      @default(now())
+  expiresAt    DateTime
+  participants Participant[]
+  expenses     Expense[]
+}
+
+model Participant {
+  id          String         @id @default(cuid())
+  groupId     String
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name        String
+  // 동명이인이 있을 때만 앱 레벨 검증으로 필수가 되는 선택 필드
+  email       String?
+  // "은행명 + 계좌번호" 자유 입력(선택, 개인정보 — 만료 시 함께 삭제)
+  bankAccount String?
+  paid        Expense[]      @relation("payer")
+  shares      ExpenseShare[]
+
+  @@unique([groupId, email])
+}
+
+model Expense {
+  id         String         @id @default(cuid())
+  groupId    String
+  group      Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  title      String
+  amount     Float
+  currency   String
+  payerId    String
+  payer      Participant    @relation("payer", fields: [payerId], references: [id])
+  date       DateTime       @default(now())
+  receiptUrl String?
+  createdAt  DateTime       @default(now())
+  shares     ExpenseShare[]
+}
+
+model ExpenseShare {
+  id            String      @id @default(cuid())
+  expenseId     String
+  expense       Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, participantId])
+}

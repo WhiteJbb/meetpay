@@ -1,26 +1,155 @@
 @import "tailwindcss";
 
+/*
+ * 클린 카드 기반 디자인 시스템 (docs/DesignSystem.html, DecisionLog §10).
+ * 색·서체·간격은 전부 아래 토큰에서 파생된다 — 컴포넌트에서 임의 값을
+ * 쓰지 말고 이 토큰을 참조하는 Tailwind 유틸리티(bg-bg, text-ink,
+ * bg-accent, rounded-token, rounded-input, rounded-full, shadow-card
+ * 등)를 사용한다. 버튼은 rounded-full(pill), 카드/입력창은
+ * rounded-token/rounded-input(라운드 스케일 분리)을 쓴다.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* docs/DesignSystem.html의 다크 팔레트를 앱 기본 테마로 채택
+     (DecisionLog §16) — accent-ink만 대비 확보를 위해 어두운 값으로
+     보정, 나머지는 그 문서의 다크모드 스와치 값을 그대로 가져옴. */
+  --bg: #14170f;
+  --surface: #1e231a;
+  --surface-alt: #262c21;
+  --ink: #edefe7; /* 본문 텍스트(다크 배경 위 밝은 텍스트) */
+  --muted: #a6ac9c;
+  --accent: #23d67f; /* 정산 완료를 연상시키는 그린 — 단일 포인트 컬러 */
+  --accent-hover: #4fe39a;
+  --accent-ink: #06301d; /* 밝은 accent 위에서 대비를 확보하는 어두운 그린 텍스트 */
+  --accent-soft: #17321f; /* 선택 상태·안내 배너·칩 배경 */
+  --border: #333a2c;
+  --positive: #23d67f; /* 받을 돈 — accent와 동일 그린 */
+  --negative: #f0696e; /* 낼 돈 */
+  --negative-soft: #3a2222; /* 위험 액션 배경(삭제 버튼·에러 배너) */
+  --warn: #e0b23d; /* 만료 임박 배지 등 경고 텍스트 */
+  --warn-soft: #3a331a; /* 경고 배경 */
+
+  --t-fast: 150ms;
+  --t-base: 250ms;
+  --t-slow: 400ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-border: var(--border);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-negative-soft: var(--negative-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+
+  --font-display: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-data: var(--font-plex-mono), ui-monospace, monospace;
+
+  --text-caption: 0.8125rem; /* 13px — 캡션 최소 크기 */
+
+  --radius-token: 14px; /* 카드 */
+  --radius-input: 8px; /* 입력창 (카드보다 작은 반경으로 구분) */
+
+  --shadow-card: 0 1px 2px rgba(27, 33, 29, 0.04), 0 8px 24px -12px rgba(27, 33, 29, 0.14);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body), "Malgun Gothic", sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--ink);
+}
+
+a,
+button,
+input,
+select,
+textarea,
+summary,
+[tabindex] {
+  outline-offset: 2px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  border-radius: 4px;
+}
+
+dialog {
+  border: none;
+  max-width: none;
+  max-height: none;
+}
+dialog::backdrop {
+  backdrop-filter: none;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up var(--t-base) var(--ease) both;
+}
+
+/* 로딩 스켈레톤 — Loading State 컴포넌트 */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    color-mix(in srgb, var(--border) 55%, var(--surface)) 37%,
+    var(--border) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.6s ease infinite;
+  border-radius: var(--radius-input);
+}
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .skeleton {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
