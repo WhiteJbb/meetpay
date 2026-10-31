@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getActiveGroupById } from "@/lib/group";
+import { getActiveGroupCardData } from "@/lib/groupCard";
 import { formatCurrency, toBaseCurrency } from "@/lib/currency";
 import { computeSettlement } from "@/lib/settlement";
 import ExpiryBanner from "@/components/ExpiryBanner";
@@ -14,8 +14,9 @@ import { addParticipant, deleteParticipant, updateParticipant } from "@/app/acti
 
 export default async function GroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const group = await getActiveGroupById(id);
-  if (!group) notFound();
+  const cardData = await getActiveGroupCardData(id);
+  if (!cardData) notFound();
+  const { group, daysLeft } = cardData;
 
   const [participants, expenses] = await Promise.all([
     prisma.participant.findMany({
@@ -222,7 +223,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
       <GroupCard
         name={group.name}
         baseCurrency={group.baseCurrency}
-        expiresAt={group.expiresAt}
+        daysLeft={daysLeft}
         groupId={id}
         totalLabel={formatCurrency(totalBase, group.baseCurrency)}
         participantCount={participants.length}

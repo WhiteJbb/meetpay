@@ -1,5 +1,21 @@
 # Plan.md
 
+## 2026-10-31 계획: task-20261031-017 revision 2
+
+- 범위: `GroupCard`, 모임 홈, `src/lib/`, `package.json`, `tests/`, `docs/`.
+- Next 16.2.10의 로컬 `connection.md` 지침에 따라 서버 데이터 로더에서
+  `await connection()` 후 기존 `getActiveGroupById`를 호출하고 현재 시각으로
+  남은 일수를 계산한다. 페이지와 카드에는 시계 읽기를 두지 않는다.
+- 기존 `Math.max(0, Math.ceil(delta / 86400000))`, 배지 문구와 JSX/스타일,
+  기존 만료 모임 조회/삭제 정책을 유지한다. 캐시는 추가하지 않는다.
+- 빌드 명령을 `prisma generate && next build`로 변경한다. 생성 클라이언트,
+  의존성, 스키마, 마이그레이션은 변경/커밋하지 않는다.
+- 외부 의존성 없는 Node 회귀 검사로 반올림/경계/만료/문구/배선과
+  요청 경계 이후 실행 및 재호출 시 시각 갱신을 확인한다.
+- 계약상 이 sandbox에서 lint/build/localhost 검사는 실행하지 않는다.
+  QA가 정확한 커밋에서 lint/build 및 생성 클라이언트 없는 빌드를 검증한다.
+  알려진 `/_global-error` prerender `workStore` 실패는 범위 밖이다.
+
 CLAUDE.md Working Rules에 따라, 구현 전에는 이 문서를 먼저 작성/갱신한다.
 새 기능을 구현할 때마다 아래에 "## YYYY-MM-DD 계획: <기능명>" 섹션을
 추가하고, 완료 후 실제 결과와 차이가 있으면 갱신한다.
