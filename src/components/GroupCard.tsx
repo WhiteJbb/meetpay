@@ -7,7 +7,7 @@ import CopyLinkButton from "@/components/CopyLinkButton";
 export default function GroupCard({
   name,
   baseCurrency,
-  expiresAt,
+  daysLeft,
   groupId,
   totalLabel,
   participantCount,
@@ -15,17 +15,12 @@ export default function GroupCard({
 }: {
   name: string;
   baseCurrency: string;
-  expiresAt: Date;
+  daysLeft: number;
   groupId: string;
   totalLabel: string;
   participantCount: number;
   expenseCount: number;
 }) {
-  const daysLeft = Math.max(
-    0,
-    Math.ceil((expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
-  );
-
   return (
     <div className="flex flex-col gap-5 rounded-token bg-surface p-5 shadow-card">
       <div className="flex items-start justify-between gap-3">
