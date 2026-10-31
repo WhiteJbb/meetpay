@@ -1,0 +1,553 @@
+/*
+ * 랜딩 전용 스타일 (task-20261031-018). 근거: docs/landing-design-review.md
+ *
+ * - 색은 globals.css :root 토큰만 쓴다:
+ *   --bg --surface --ink --muted --accent --accent-ink --border
+ * - 간격 스케일: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 / 80
+ * - 모션: CTA·텍스트 링크의 150ms(var(--t-fast)) 피드백만.
+ *   진입/스크롤/루프 애니메이션 없음.
+ * - 서체는 JSX의 Tailwind 유틸리티(font-display / font-body / font-data)로 지정.
+ */
+
+/* ---------- 브레이크아웃 ----------
+ * 부모(layout.tsx)는 max-width 640px + px-4 + py-10 그대로 둔다.
+ * 콘텐츠 폭 --content = min(1120px, 100vw - 2*gutter).
+ * gutter(20/32px)가 세로 스크롤바 폭(일반적으로 17px 이하)보다 크므로,
+ * 100vw에 스크롤바가 포함되는 브라우저에서도 요소의 오른쪽 끝이 문서
+ * 폭을 넘지 않는다 → 가로 스크롤이 생기지 않고, overflow 숨김으로
+ * 감출 필요도 없다. 그린 배경만 box-shadow로 화면 양끝까지 칠하는데,
+ * box-shadow는 스크롤 가능 영역을 늘리지 않는다(ink overflow).
+ * QA는 scrollWidth === clientWidth를 실제로 확인한다. */
+.page {
+  --gutter: 20px;
+  --content: min(1120px, calc(100vw - 2 * var(--gutter)));
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .page {
+    --gutter: 32px;
+  }
+}
+
+.stage,
+.steps {
+  margin-inline: calc((100% - var(--content)) / 2);
+}
+
+/* ---------- 그린 스테이지 ---------- */
+.stage {
+  /* layout.tsx의 py-10(40px) 상단 여백을 상쇄해 뷰포트 맨 위부터 시작 */
+  margin-top: -40px;
+  padding-block: 48px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 100vmax var(--accent);
+  clip-path: inset(0 -100vmax);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 32px;
+}
+
+.message,
+.specimen {
+  min-width: 0;
+  max-width: 600px;
+}
+
+@media (min-width: 960px) {
+  .stage {
+    padding-block: 80px;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    column-gap: 48px;
+    align-items: center;
+  }
+
+  .message,
+  .specimen {
+    max-width: none;
+  }
+}
+
+@media (min-width: 1100px) {
+  .hero {
+    column-gap: 64px;
+  }
+}
+
+/* ---------- 메시지 ---------- */
+.eyebrow {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent-ink);
+}
+
+.headline {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  word-break: keep-all;
+  color: var(--accent-ink);
+}
+
+@media (max-width: 359.98px) {
+  .headline {
+    font-size: 36px;
+  }
+}
+
+@media (min-width: 640px) {
+  .headline {
+    font-size: 48px;
+    line-height: 1.1;
+  }
+}
+
+@media (min-width: 960px) {
+  .headline {
+    font-size: 56px;
+    line-height: 1.08;
+  }
+}
+
+@media (min-width: 1100px) {
+  .headline {
+    font-size: 64px;
+  }
+}
+
+.lead {
+  margin: 24px 0 0;
+  max-width: 30em;
+  font-size: 17px;
+  line-height: 1.6;
+  font-weight: 500;
+  word-break: keep-all;
+  color: var(--accent-ink);
+}
+
+@media (min-width: 960px) {
+  .lead {
+    font-size: 18px;
+  }
+}
+
+.ctaGroup {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 32px;
+  /* 평소엔 보이지 않고, 강제 색상 모드에서 버튼 경계로 드러난다 */
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    transform var(--t-fast) var(--ease),
+    opacity var(--t-fast) var(--ease);
+}
+
+.cta:hover {
+  transform: translateY(-1px);
+}
+
+.cta:active {
+  transform: translateY(0);
+  opacity: 0.88;
+}
+
+/* 전역 포커스 링(accent)은 그린 위에서 보이지 않으므로 accent-ink로 교체.
+ * 전역 규칙의 border-radius: 4px도 pill 모양으로 되돌린다. */
+.cta:focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+@media (max-width: 479.98px) {
+  .ctaGroup {
+    align-items: stretch;
+  }
+}
+
+.ctaNote {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 500;
+  word-break: keep-all;
+  color: var(--accent-ink);
+}
+
+/* ---------- 정산 예시 카드 ----------
+ * 단일 면(--surface) + 반경 14px(= --radius-token). 그림자·테두리 없음. */
+.specimen {
+  padding: 24px;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+@media (max-width: 359.98px) {
+  .specimen {
+    padding: 24px 16px;
+  }
+}
+
+@media (min-width: 640px) {
+  .specimen {
+    padding: 32px;
+  }
+}
+
+.specimenHeading {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.specimenLabel {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.specimenTitle {
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.specimenMeta {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.block {
+  margin-top: 24px;
+}
+
+.blockTitle {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 8px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--border);
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.rowPrimary {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.rowSecondary {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.amount,
+.balanceAmount,
+.transferAmount,
+.totalRow dd {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.amount {
+  font-size: 15px;
+  text-align: right;
+}
+
+.totals {
+  margin: 4px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 4px;
+}
+
+.totalRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.totalRow dt {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.totalRow dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.balance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+}
+
+.balanceLabel {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.balanceAmount {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.receive {
+  color: var(--accent);
+}
+
+.send {
+  color: var(--ink);
+}
+
+/* 결과: 카드 안의 카드 대신 굵은 구분선 하나로 구역을 나눈다 */
+.result {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 2px solid var(--accent);
+}
+
+.resultTitle {
+  margin: 0 0 4px;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+.transfers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transfer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 12px 0;
+}
+
+.transfer + .transfer {
+  border-top: 1px solid var(--border);
+}
+
+.transferPair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.transferArrow {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.transferAmount {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.specimenNote {
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  word-break: keep-all;
+}
+
+/* ---------- 시작 3단계 ---------- */
+.steps {
+  padding-block: 48px;
+  color: var(--ink);
+}
+
+@media (min-width: 960px) {
+  .steps {
+    padding-block: 80px 64px;
+  }
+}
+
+.stepsTitle {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  word-break: keep-all;
+}
+
+@media (min-width: 960px) {
+  .stepsTitle {
+    font-size: 36px;
+  }
+}
+
+.stepList {
+  margin: 32px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  column-gap: 12px;
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+}
+
+.step:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 960px) {
+  .stepList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 32px;
+  }
+
+  .step {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+    padding: 24px 0 0;
+  }
+
+  .step:last-child {
+    border-bottom: 0;
+  }
+}
+
+.stepNumber {
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.stepTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.stepBody {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted);
+  word-break: keep-all;
+}
+
+.stepsFoot {
+  margin: 32px 0 0;
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  transition: opacity var(--t-fast) var(--ease);
+}
+
+.textLink:hover {
+  opacity: 0.8;
+}
+
+.textLink:active {
+  opacity: 0.7;
+}
+
+/* ---------- 모션 감소 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .cta,
+  .textLink {
+    transition: none;
+  }
+
+  .cta:hover,
+  .cta:active {
+    transform: none;
+  }
+}
