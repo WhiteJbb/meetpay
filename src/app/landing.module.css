@@ -464,6 +464,7 @@
 
 .step {
   display: grid;
+  align-content: start;
   grid-template-columns: 32px minmax(0, 1fr);
   column-gap: 12px;
   padding: 24px 0;
