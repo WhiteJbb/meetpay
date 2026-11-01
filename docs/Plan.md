@@ -1,5 +1,43 @@
 # Plan.md
 
+## 2026-11-01 계획: task-20261102-001 정산 내용 복사(단톡방용 글) 버튼
+
+- 요청: 정산 결과(편집 모드 `/groups/[id]/settlement` = 모임 화면의 정산
+  진입점, 열람 전용 `/r/[token]`)에서 모임 이름·이체별 금액·받는 계좌·
+  열람 전용 결과 링크를 한 번에 글로 복사한다.
+- 범위: `src/lib/settlementText.ts`(신규, 순수 함수),
+  `src/components/CopySettlementButton.tsx`(신규, 클라이언트),
+  `src/components/SettlementView.tsx`(배선), `tests/`, `scripts/`, `docs/`.
+- 범위 밖: 정산 알고리즘, DB 스키마, 랜딩, 배포, 기존 결과 링크 복사/
+  계좌 복사 버튼(그대로 둔다), 새 라이브러리.
+- 텍스트 형식(줄바꿈 `\n`, 빈 줄 없음):
+  1. 첫 줄: 모임 이름
+  2. 이체마다 한 줄: `민수 → 지영 12,000원` — 화면과 같은 `result.transfers`
+     순서, 금액은 화면과 같은 `Math.round` + 천 단위 구분. 기준 통화가
+     KRW면 `원`, 아니면 ` <통화코드>`. 받는 사람 계좌가 있으면 줄 끝에
+     ` (계좌)`를 그대로 붙이고, 없으면 생략.
+  3. 마지막 줄: `${window.location.origin}/r/${viewToken}` — 두 화면 모두
+     열람 전용 토큰만 사용(편집 링크 `/groups/[id]` 미사용).
+- UI: 기존 공유 영역(결과 링크 복사) 위에 accent 채움 pill 버튼
+  "정산 내용 복사"를 둔다. 이체가 0건이면 렌더하지 않는다(기존 빈 정산
+  안내와 결과 링크 복사는 유지). 성공 시 "복사되었어요!"(1.5초, 기존
+  CopyLinkButton과 동일), 실패(`navigator.clipboard` 없음/거부) 시 성공
+  표시 없이 `role="alert"` 실패 안내를 보여 주고 같은 버튼으로 재시도.
+  네이티브 `<button>`이라 키보드(Tab/Enter/Space) 조작, 기존 focus-visible
+  링 사용. 디자인 토큰만 사용.
+- 검증:
+  - `tests/settlement-text.test.mjs`: 실제 `settlementText.ts`와 실제
+    `computeSettlement`를 Node로 실행 — 여러 이체, 계좌 등록/미등록 혼합,
+    반올림, 줄 구성, URL 마지막 줄, 배선(이체 0건 숨김, `/r/` 사용) 검사.
+  - `scripts/settlement-copy-qa.mjs`: 격리 DB(임시 SQLite)로 띄운 dev 서버에
+    Playwright로 모임 생성→지출→정산→결과 공유 흐름을 실행하고, 실제
+    클릭으로 클립보드 내용 비교(두 화면), 거부/사용 불가 실패와 재시도,
+    키보드 조작, 이체 0건 숨김, 1440/390 × light/dark 캡처.
+  - `npm run lint`, `npm run build`.
+- 테마: 앱은 단일 다크 테마(DecisionLog §16). light/dark 캡처는
+  `prefers-color-scheme`만 바꿔 찍고 양쪽 모두 깨지지 않음을 확인한다
+  (라이트 테마 추가는 디자인 방향 변경이라 범위 밖).
+
 ## 2026-10-31 계획: task-20261031-017 revision 2
 
 - 범위: `GroupCard`, 모임 홈, `src/lib/`, `package.json`, `tests/`, `docs/`.
