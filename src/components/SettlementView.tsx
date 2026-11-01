@@ -4,6 +4,7 @@ import { computeSettlement } from "@/lib/settlement";
 import { formatCurrency, KRW_EXCHANGE_RATE, type CurrencyCode } from "@/lib/currency";
 import ExpiryBanner from "@/components/ExpiryBanner";
 import CopyLinkButton from "@/components/CopyLinkButton";
+import CopySettlementButton from "@/components/CopySettlementButton";
 import TransferList from "@/components/TransferList";
 import Avatar from "@/components/Avatar";
 import AppBar from "@/components/AppBar";
@@ -49,6 +50,9 @@ export default async function SettlementView({
     group.baseCurrency
   );
 
+  // 이체 목록(TransferList)과 같은 기준으로 받는 사람 계좌를 찾는다.
+  const accountById = new Map(participants.map((p) => [p.id, p.bankAccount]));
+
   const usedForeignCurrencies = [...new Set(expenses.map((e) => e.currency))].filter(
     (c) => c !== group.baseCurrency
   );
@@ -61,9 +65,24 @@ export default async function SettlementView({
         backHref={readOnly ? undefined : `/groups/${group.id}`}
       />
 
-      <div className="flex flex-col items-start gap-1">
-        <CopyLinkButton path={`/r/${viewToken}`} label="결과 링크 복사 (열람 전용)" />
-        <p className="font-body text-caption text-muted">이 링크로는 결과만 볼 수 있어요</p>
+      <div className="flex flex-col items-start gap-3">
+        {result.transfers.length > 0 && (
+          <CopySettlementButton
+            groupName={group.name}
+            transfers={result.transfers.map((t) => ({
+              fromName: t.fromName,
+              toName: t.toName,
+              amount: t.amount,
+              toAccount: accountById.get(t.toId) ?? null,
+            }))}
+            baseCurrency={group.baseCurrency}
+            resultPath={`/r/${viewToken}`}
+          />
+        )}
+        <div className="flex flex-col items-start gap-1">
+          <CopyLinkButton path={`/r/${viewToken}`} label="결과 링크 복사 (열람 전용)" />
+          <p className="font-body text-caption text-muted">이 링크로는 결과만 볼 수 있어요</p>
+        </div>
       </div>
 
       <ExpiryBanner expiresAt={group.expiresAt} />

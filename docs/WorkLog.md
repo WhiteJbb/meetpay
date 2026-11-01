@@ -427,3 +427,38 @@ DecisionLog §14 참고. 색 토큰은 정확했지만 넓은 화면에서 콘�
   없이도 공백이 없음을 확인.
 - 검증: `tsc --noEmit`/`next build` 통과, 빌드 직후 캐시 삭제+재기동,
   Playwright 1920px/390px 스크린샷, 콘솔 에러 0건.
+
+---
+
+## 2026-11-01
+
+### 정산 내용 복사(단톡방용 글) 버튼 — task-20261102-001
+
+- 계획: `docs/Plan.md` 2026-11-01 섹션. 결정: DecisionLog §19.
+- 구현:
+  - `src/lib/settlementText.ts`(신규): 의존성 없는 순수 함수
+    `buildSettlementText`, `formatTextAmount`.
+  - `src/components/CopySettlementButton.tsx`(신규): 클라이언트 버튼,
+    성공(1.5초 "복사되었어요!" + sr-only 알림)/실패(`role="alert"`) 상태.
+  - `src/components/SettlementView.tsx`: 이체가 있을 때만 버튼 렌더,
+    받는 계좌 매핑(`accountById`), 기존 결과 링크 블록은 그대로 아래에 둠.
+- 테스트: `tests/settlement-text.test.mjs`(7건) — 실제 텍스트 함수와 실제
+  정산 알고리즘 실행, 배선 소스 검사. 기존 44건 포함 51/51 통과.
+- 브라우저 QA: `scripts/settlement-copy-qa.mjs` — 임시 SQLite
+  (`/tmp/meetpay-qa/qa.db`, migrate deploy)로 띄운 dev 서버(3106)에서
+  가상 데이터로 생성→지출→정산→결과 공유, 두 화면 실제 클릭 복사, 거부/
+  사용 불가 실패와 재시도, 키보드, 이체 0건 숨김, 1440/390 × light/dark 캡처.
+- 오류/수정:
+  - QA 스크립트 첫 실행에서 모임 생성 후 `waitForURL(/\/groups\/[^/]+$/)`이
+    `/groups/new` 자체에 즉시 일치해 다음 단계가 타임아웃 → 경로가 `new`가
+    아닐 때만 일치하도록 수정. 지출 폼 제출 버튼 이름도 "지출 등록"으로 수정.
+  - QA DB 파일을 지운 뒤 dev 서버를 재시작하려다 이전 서버가 포트를 잡고
+    있어 새 서버가 `EADDRINUSE`로 실패 → 프로세스 정리 후 새 DB로 재기동.
+- 검사: `npm run lint`, `npm run build` 통과.
+  - QA 스크립트의 실패/재시도 확인에서 `isVisible()`(대기 없음)를 비동기 클릭
+    직후 호출해 오판(클립보드는 정상 기록) → 대기형 helper(`visible`/`gone`)로
+    수정. `getByRole("alert")`가 Next 라우트 안내(`__next-route-announcer__`)와
+    겹쳐 strict 위반 → 실패 문구로 필터.
+- 결과: 브라우저 QA 189/189 통과(dev 서버 로그 오류 0건), 캡처 34장은
+  저장소 밖(`/work/out/captures/`)에 보관. 최종 `npm run lint`/`npm run build`
+  통과, Node 테스트 51/51, diff 비밀값 패턴 검사 0건, 실제 `dev.db` 미사용·미변경.
