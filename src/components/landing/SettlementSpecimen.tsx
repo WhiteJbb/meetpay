@@ -75,8 +75,8 @@ export default function SettlementSpecimen() {
         <button type="button" className={styles.reset} onClick={reset} disabled={!changed}>
           처음 예시로
         </button>
+        <p className={styles.hint}>지출을 끄고 켜 보세요. 보낼 금액이 다시 계산돼요.</p>
       </div>
-      <p className={styles.hint}>지출을 끄고 켜 보세요. 보낼 금액이 다시 계산돼요.</p>
 
       <ol className={styles.track}>
         <li className={styles.trackStep}>
@@ -183,7 +183,7 @@ export default function SettlementSpecimen() {
             )}
           </h3>
           {/* 라이브 영역은 고정해 두고 안쪽만 다시 그려야 스크린리더가 바뀐 결과를 읽는다 */}
-          <div aria-live="polite">
+          <div aria-live="polite" className={styles.result}>
             <div key={`r${revision}`} className={fresh}>
               {count === 0 ? (
                 <p className={styles.empty}>

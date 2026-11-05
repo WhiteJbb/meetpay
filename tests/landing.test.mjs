@@ -228,6 +228,7 @@ test("spacing values stay on the 4/8/12/16/24/32/48/64/80 scale", () => {
   const decl = /(?:^|\s)(margin(?:-[a-z]+)?|padding(?:-[a-z]+)?|gap|row-gap|column-gap):\s*([^;]+);/g;
   for (const [, prop, value] of cssNoComments.matchAll(decl)) {
     if (/calc\(/.test(value)) continue; // breakout margin-inline
+    if (value.trim() === "auto") continue; // flex push: start steps sit at the bottom of the intro column
     for (const token of value.trim().split(/\s+/)) {
       if (token === "40px" && value.trim() === "0 0 24px 40px") continue; // track indent = 28px dot + 12px gap
       const n = Math.abs(Number(token.replace(/px$/, ""))); // -4px: hover surface bleed on expense rows
@@ -256,6 +257,29 @@ test("layout: scrollbar-safe width, 12 columns at 960 (5 + 7), no hidden overflo
   assert.doesNotMatch(cssNoComments, /overflow(?:-x)?:\s*(?:hidden|clip)/);
   assert.doesNotMatch(cssNoComments, /(?:^|[\s;{])width:\s*100vw/);
   assert.match(layoutSource, /<div className="mx-auto w-full max-w-\[640px\] flex-1 px-4 py-10">\{children\}<\/div>/);
+});
+
+// task-20261105-002 r3: at >= 960px the expense controls and the last transfer must share
+// the first viewport (1366×768). Source-level guard; the actual bounding boxes are measured
+// in the browser (see docs/WorkLog.md).
+test("desktop: balanced columns, controls and result in one viewport, no inner scroll", () => {
+  const desktop = cssNoComments.match(/@media \(min-width: 960px\) \{([\s\S]*?)\n\}/g).join("\n");
+  // Both columns stretch to the same height; intro is no longer sticky.
+  assert.doesNotMatch(cssNoComments, /position:\s*sticky/);
+  assert.match(desktop, /\.intro \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*padding-block: 24px;/);
+  assert.match(desktop, /\.ledger \{\s*padding: 24px 32px;/);
+  assert.match(desktop, /\.flow \{[^}]*margin-top: auto;/);
+  // Vertical centering in tall windows, document scroll in short ones.
+  assert.match(desktop, /\.page \{[^}]*min-height: calc\(100svh - 48px\);[^}]*align-content: center;/);
+  // Rows stay >= 44px touch targets; result slot reserves the 2-transfer height so toggling never shifts layout.
+  assert.match(desktop, /\.expense,\s*\.balanceRow \{\s*min-height: 48px;/);
+  assert.match(desktop, /\.result \{[^}]*min-height: 101px;/);
+  assert.match(desktop, /\.transfer \{[^}]*min-height: 48px;[^}]*padding-block: 0;/); // 4 + 48 + 1 + 48 = 101
+  assert.match(specimenSource, /<div aria-live="polite" className=\{styles\.result\}>/);
+  // No font shrinking on desktop and no inner scrolling container.
+  assert.doesNotMatch(desktop, /font-size: (?:[0-9]|1[0-2])px/);
+  assert.doesNotMatch(cssNoComments, /overflow(?:-y)?:\s*(?:auto|scroll)|max-height/);
+  assert.match(cssNoComments, /@media \(min-width: 1184px\) \{\s*\.headline \{\s*font-size: 56px;/);
 });
 
 test("ledger is a single surface: no shadow or border stacking", () => {

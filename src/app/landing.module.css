@@ -35,17 +35,24 @@
 }
 
 @media (min-width: 960px) {
+  /* 레이아웃 위아래 여백(40px) 중 16px을 되돌려 첫 화면 높이를 확보하고,
+   * 창이 장부보다 높으면 두 단을 세로 가운데에 둔다(위로 쏠리지 않게). */
   .page {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     column-gap: 32px;
-    padding-block: 24px 48px;
-    align-items: start;
+    margin-block: -16px;
+    padding-block: 0;
+    min-height: calc(100svh - 48px);
+    align-content: center;
   }
 
+  /* 두 단은 같은 높이(grid stretch). 소개는 장부와 같은 위아래 안쪽 여백을 두어
+   * 왼쪽 눈썹 ↔ 장부 "정산 예시" 라벨, 왼쪽 시작 순서 ↔ 장부 주석이 같은 선에 놓인다. */
   .intro {
     grid-column: 1 / span 5;
-    position: sticky;
-    top: 64px;
+    display: flex;
+    flex-direction: column;
+    padding-block: 24px;
   }
 
   .ledger {
@@ -200,12 +207,12 @@
   }
 }
 
+/* 머리글: 제목 | 처음 예시로 / 안내문(아래 한 줄 전체). 넓은 화면은 아래에서 다시 배치 */
 .ledgerHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 16px;
 }
 
 .ledgerTitle {
@@ -261,6 +268,7 @@
 }
 
 .hint {
+  grid-column: 1 / -1;
   margin: 8px 0 0;
   font-size: 14px;
   line-height: 1.5;
@@ -600,6 +608,115 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/* ---------- 넓은 화면(≥960): 조작과 결과를 한 화면에 ----------
+ * 1366×768 첫 화면에서 지출 체크박스와 마지막 송금이 함께 보이도록 장부 안
+ * 간격만 한 단계씩 조인다. 글자 크기는 그대로, 행은 48px(터치 영역 44 이상).
+ * 창이 더 낮거나 확대하면 문서가 스크롤된다(장부 내부 스크롤 없음). */
+@media (min-width: 960px) {
+  /* 장부 머리글 줄의 기준선에 맞춘 줄 높이 → 왼쪽 눈썹과 "정산 예시" 라벨이 같은 선 */
+  .eyebrow {
+    margin-bottom: 8px;
+    line-height: 30px;
+  }
+
+  .lead {
+    margin-top: 24px;
+  }
+
+  .ctaGroup {
+    margin-top: 32px;
+    margin-bottom: 32px;
+  }
+
+  /* 시작 순서는 소개 단의 바닥(= 장부 주석 줄)에 붙인다 */
+  .flow {
+    margin-top: auto;
+    gap: 12px;
+  }
+
+  /* 넓은 화면에서는 단계 이름과 설명을 두 줄로 나눠 장부의 단계 트랙과 같은 읽기 리듬을 만든다 */
+  .flowTitle {
+    display: block;
+    margin-right: 0;
+  }
+
+  .ledger {
+    padding: 24px 32px;
+  }
+
+  /* 라벨과 제목을 한 줄로, 버튼은 제목·안내문 두 줄의 가운데에 */
+  .ledgerTitle {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .reset {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  .hint {
+    grid-column: 1;
+    margin-top: 4px;
+  }
+
+  .track {
+    margin-top: 16px;
+  }
+
+  .trackStep {
+    padding-bottom: 12px;
+  }
+
+  .rows {
+    margin-top: 4px;
+  }
+
+  .expense,
+  .balanceRow {
+    min-height: 48px;
+  }
+
+  .totals {
+    margin-top: 4px;
+    padding-top: 8px;
+  }
+
+  /* 송금 행 높이를 글꼴 지표와 무관하게 48px로 고정(내용은 세로 가운데) → 아래 .result 높이가 정확하다 */
+  .transfer {
+    min-height: 48px;
+    padding-block: 0;
+    align-content: center;
+  }
+
+  .transferAmount {
+    line-height: 1;
+  }
+
+  .note {
+    margin-top: 8px;
+  }
+
+  /* 결과 칸은 송금 2건(참여자 3명일 때 최대: 위 여백 4 + 행 48 + 구분선 1 + 행 48) 높이를 늘 잡아 둔다.
+   * flow-root로 안쪽 여백이 칸 밖으로 빠지지 않게 한다. 지출을 끄고 켜도
+   * 장부 높이가 그대로라 세로 가운데 정렬된 두 단이 흔들리지 않는다. */
+  .result {
+    display: flow-root;
+    min-height: 101px;
+  }
+}
+
+/* 콘텐츠 폭이 1120px에 닿으면(소개 단 448px) 헤드라인을 한 단계 키워 장부와 무게를 맞춘다.
+ * 그보다 좁으면 "누가 얼마 보낼지"가 줄바꿈되므로 44px을 유지한다. */
+@media (min-width: 1184px) {
+  .headline {
+    font-size: 56px;
+    line-height: 1.12;
   }
 }
 

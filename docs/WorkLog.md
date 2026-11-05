@@ -480,3 +480,23 @@ DecisionLog §14 참고. 색 토큰은 정확했지만 넓은 화면에서 콘�
   Playwright 1440/390 × light/dark 캡처 및 토글·빈 상태·초기화·CTA 이동·reduced-motion.
 - 남은 것: `scripts/landing-qa.mjs`와 `docs/landing-design-review.md`는 이전(그린 스테이지) 기준이라 갱신 필요.
   샌드박스에서 Pretendard CDN(jsdelivr)이 막혀 캡처는 대체 글꼴로 렌더됨.
+
+## 2026-11-05 — task-20261105-002 r3 첫 화면 B 데스크톱 높이 균형
+
+- 계획: `docs/Plan.md` r3 섹션. 결정: DecisionLog §21.
+- 변경: `landing.module.css`(≥960 배치·간격, ≥1184 헤드라인 56px, 머리글 grid),
+  `SettlementSpecimen.tsx`(안내문을 머리글 안으로, 결과 칸에 `styles.result`),
+  `tests/landing.test.mjs`(데스크톱 규칙 테스트 추가, 간격 검사에 `auto` 허용).
+- 측정(Playwright 요소 경계, 대체 글꼴):
+  - 수정 전 1366×768: 장부 64–960, 마지막 송금 bottom 893 → 화면 밖.
+  - 수정 후 1366×768: 소개·장부 모두 24–744, 체크박스 147–293, 마지막 송금 bottom 691, 문서 높이 768(스크롤 없음).
+  - 1440×900: 두 단 90–810(위아래 90 동일), 마지막 송금 757.
+  - 8가지 지출 조합·모두 끄기·처음 예시로 후에도 장부 720px 고정, 위치 불변. 초기화 후 포커스는 첫 지출.
+  - 320–1920px 가로 넘침 0, 두 단 겹침 0. 125% 확대(1093×614)·960×600은 문서 스크롤.
+- 오류/수정:
+  - 장부만 줄였더니 토글 때 결과 칸 높이가 달라져 세로 가운데 정렬된 두 단이 흔들림 → 결과 칸 min-height.
+  - 빈 상태 `p`의 위 여백이 결과 칸 밖으로 겹쳐(margin collapse) 4px 차이 → `display: flow-root`.
+  - 송금 행 높이가 글꼴 지표에 따라 달라질 수 있음(샌드박스는 Pretendard CDN 차단) → 행 min-height 48 + padding 0으로 고정.
+  - 960–1183px에서 56px 헤드라인이 줄바꿈될 폭 → 56px은 ≥1184에서만.
+  - dev 서버 정리 중 `/proc` 순회 kill이 자기 셸까지 매칭해 종료(exit 144) → 자기 PID 제외 후 재실행.
+- 확인: `npm run lint`, `npm run build` 통과, Node 테스트 53/53, diff 비밀값 패턴 0건.
