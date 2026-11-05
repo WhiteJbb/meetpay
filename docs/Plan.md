@@ -1,5 +1,25 @@
 # Plan.md
 
+## 2026-11-05 계획: task-20261105-002 첫 화면 시안 B(계산 장부 · 직접 따라 해 보기) 구현
+
+- 요청: 사용자가 고른 시안 B(`/work/home/mockup/chosen.html`)를 실제 첫 화면(`/`)에 구현.
+- 범위: `src/app/page.tsx`, `src/app/landing.module.css`, `src/components/landing/*`,
+  이에 맞춘 `tests/landing.test.mjs` 갱신, `docs/`.
+- 범위 밖: 모임 생성·지출·정산·공유 기능, 정산 알고리즘, DB 스키마, 인증, 의존성, 배포.
+- 구성:
+  1. 넓은 화면(≥960) 12단 격자: 왼쪽 5단 소개(눈썹·h1·설명·CTA·시작 3단계 짧은 목록, sticky),
+     오른쪽 7단 "정산 예시" 장부. 좁은 화면은 한 단으로 쌓는다. 풀블리드 그린 스테이지는 없앤다.
+  2. 장부 = 단일 면(--surface) + 왼쪽 단계 트랙(1 기록한 지출 → 2 사람별 잔액 → 3 이렇게 보내면 끝나요).
+  3. 지출 행은 실제 체크박스(행 전체 라벨). 켜고 끄면 `src/lib/settlement.ts`의
+     `computeSettlement`를 그대로 호출해 잔액·송금을 다시 계산. "처음 예시로" 버튼은 바뀌었을 때만 활성.
+     모두 끄면 빈 상태, 송금 0건이면 "보낼 돈이 없어요".
+  4. 잔액은 0을 가운데 둔 막대(받을 돈=accent 오른쪽, 보낼 돈=ink 왼쪽). 막대는 transform scaleX
+     250ms, 바뀐 합계·송금은 150ms opacity. reduced-motion에서는 즉시 바뀐다.
+  5. 데이터는 `settlementExample.ts`(변경 없음), 아바타는 기존 `Avatar` 컴포넌트.
+  6. "예시"임을 머리글("정산 예시")·안내문·주석문으로 명확히 한다.
+- 검증: lint, build, `node --experimental-vm-modules --test tests/`, dev 서버 + Playwright로
+  1440/390 × light/dark 캡처, 지출 토글·초기화·빈 상태·CTA 이동 확인.
+
 ## 2026-11-01 계획: task-20261102-001 정산 내용 복사(단톡방용 글) 버튼
 
 - 요청: 정산 결과(편집 모드 `/groups/[id]/settlement` = 모임 화면의 정산

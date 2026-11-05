@@ -462,3 +462,21 @@ DecisionLog §14 참고. 색 토큰은 정확했지만 넓은 화면에서 콘�
 - 결과: 브라우저 QA 189/189 통과(dev 서버 로그 오류 0건), 캡처 34장은
   저장소 밖(`/work/out/captures/`)에 보관. 최종 `npm run lint`/`npm run build`
   통과, Node 테스트 51/51, diff 비밀값 패턴 검사 0건, 실제 `dev.db` 미사용·미변경.
+
+---
+
+## 2026-11-05 — task-20261105-002 첫 화면 시안 B 구현
+
+- 사용자가 고른 시안 B("계산 장부 · 직접 따라 해 보기")를 `/`에 구현.
+  - `page.tsx`: 풀블리드 그린 스테이지 제거, 소개(5단) + 장부(7단) 12단 격자.
+  - `SettlementSpecimen.tsx`: 클라이언트 컴포넌트로 전환. 예시 지출 체크박스 →
+    `computeSettlement`로 재계산, "처음 예시로"(변경 시만 활성), 빈 상태, 0을 가운데 둔 잔액 막대.
+  - `StartSteps.tsx`: 별도 섹션(h2 + 3열 + "지금 새 모임 만들기" 텍스트 링크) → CTA 아래 짧은 순서 목록.
+  - `landing.module.css`: 전면 교체. `tests/landing.test.mjs`: 새 디자인 규칙으로 갱신 +
+    지출 켜고 끄기 8가지 조합 모두 실제 알고리즘으로 잔액 0이 되는지 검사 추가.
+- 오류/수정: 넓은 화면 아래 여백 40px이 간격 단계(…32/48…) 밖이라 테스트 실패 → 48px로 수정.
+  트랙 들여쓰기 40px(점 28 + 간격 12)는 테스트에 명시 예외로 둠.
+- 확인: lint, build, `node --experimental-vm-modules --test tests/`(52 통과),
+  Playwright 1440/390 × light/dark 캡처 및 토글·빈 상태·초기화·CTA 이동·reduced-motion.
+- 남은 것: `scripts/landing-qa.mjs`와 `docs/landing-design-review.md`는 이전(그린 스테이지) 기준이라 갱신 필요.
+  샌드박스에서 Pretendard CDN(jsdelivr)이 막혀 캡처는 대체 글꼴로 렌더됨.
