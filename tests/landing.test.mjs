@@ -1,4 +1,4 @@
-// Landing regression (task-20261031-018). Node built-ins only, same mechanism as
+// Landing regression (task-20261031-018, updated for task-20261105-002 design B). Node built-ins only, same mechanism as
 // tests/group-card.test.mjs:
 //   node --experimental-vm-modules --test tests/landing.test.mjs
 // Executes the real example data module and the real settlement algorithm;
@@ -114,48 +114,78 @@ test("won formatting and Korean subject particles are deterministic", () => {
   assert.equal(example.withSubjectParticle("수아"), "수아가");
 });
 
+// ---------- Interactive example: every on/off combination (real algorithm) ----------
+
+// The landing ledger lets visitors switch each example expense on/off and
+// recomputes with computeSettlement. Check all 2^3 combinations settle to zero.
+test("every expense on/off combination settles to zero with the real algorithm", () => {
+  const people = [...example.EXAMPLE_PARTICIPANTS];
+  const n = example.EXAMPLE_EXPENSES.length;
+  for (let mask = 0; mask < 1 << n; mask++) {
+    const active = example.EXAMPLE_EXPENSES.filter((_, i) => mask & (1 << i));
+    const result = computeSettlement(
+      people.map((name) => ({ id: name, name })),
+      active.map((e) => ({ amount: e.amount, currency: "KRW", payerId: e.payer, shareParticipantIds: people }))
+    );
+    const remaining = new Map(result.netBalances.map((b) => [b.participantId, b.balance]));
+    for (const t of result.transfers) {
+      remaining.set(t.fromId, remaining.get(t.fromId) + t.amount);
+      remaining.set(t.toId, remaining.get(t.toId) - t.amount);
+    }
+    for (const [name, value] of remaining) assert.ok(Math.abs(value) < 1, `mask ${mask}: ${name} ${value}`);
+    if (mask === 0) assert.equal(result.transfers.length, 0);
+  }
+});
+
 // ---------- Copy, links and semantics (source inspection) ----------
 
 test("hero copy, eyebrow and the real /groups/new CTA", () => {
   const page = squash(pageSource);
   assert.match(pageSource, /^import Link from "next\/link";/m);
   assert.match(page, /모임 지출 · 더치페이 정산/);
-  assert.match(pageSource, /함께 쓴 돈,\s*<br \/>\s*누가 얼마 보낼지\s*<br \/>\s*한눈에\./);
+  assert.match(pageSource, /함께 쓴 돈,\s*<br \/>\s*누가 얼마 보낼지\s*<br \/>\s*<em>한눈에\.<\/em>/);
   assert.match(page, /지출을 기록하면 보낼 금액을 계산해요\. 가입 없이 시작하고, 결과는 링크로 공유하세요\./);
   assert.match(page, /<Link href="\/groups\/new" className=\{`\$\{styles\.cta\}[^`]*`\}> 새 모임 만들기 <\/Link>/);
   assert.match(page, /가입 없이 바로 시작/);
 });
 
-test("specimen is labelled as an example and explains its assumptions", () => {
+test("ledger is labelled as an example and recomputes with the real settlement logic", () => {
   const s = squash(specimenSource);
+  assert.match(specimenSource, /^"use client";/);
+  assert.match(specimenSource, /import \{ computeSettlement \} from "@\/lib\/settlement";/);
   assert.match(s, /정산 예시/);
   assert.match(s, /\{EXAMPLE_GROUP_NAME\}/);
+  assert.match(s, /지출을 끄고 켜 보세요\. 보낼 금액이 다시 계산돼요\./);
   assert.match(s, /모두 같은 금액으로 나눈 예시 · 실제 송금은 직접 해요\./);
-  assert.match(s, /받을 돈/);
-  assert.match(s, /보낼 돈/);
-  assert.match(s, /font-data/);
-  // Rows are read-only: no buttons, links, handlers or fake controls.
-  assert.doesNotMatch(specimenSource, /<button|<Link|<a\s|onClick|role="button"|tabIndex/);
+  for (const text of ["받을 돈", "보낼 돈", "처음 예시로", "켜진 지출이 없어요.", "보낼 돈이 없어요."]) {
+    assert.ok(s.includes(text), text);
+  }
+  // Real checkboxes and a real button; reset is disabled until something changes.
+  assert.match(s, /type="checkbox"/);
+  assert.match(s, /<button type="button" className=\{styles\.reset\} onClick=\{reset\} disabled=\{!changed\}>/);
+  assert.match(s, /aria-live="polite"/);
+  // No links or fake controls inside the example.
+  assert.doesNotMatch(specimenSource, /<Link|<a\s|role="button"|tabIndex|fetch\(|localStorage/);
 });
 
-test("three start steps are a semantic ordered list with a text link", () => {
+test("three start steps are a semantic ordered list", () => {
   const s = squash(stepsSource);
-  assert.match(s, /모임 하나 만들면, 이 순서로\./);
-  assert.match(s, /<ol className=\{styles\.stepList\}>/);
+  assert.match(s, /<ol className=\{styles\.flow\} aria-label="시작하는 순서">/);
   for (const title of ["모임 만들기", "지출 기록하기", "결과 공유하기"]) {
     assert.match(s, new RegExp(`title: "${title}"`));
   }
   assert.equal((stepsSource.match(/title: "/g) ?? []).length, 3);
-  assert.match(s, /<Link href="\/groups\/new" className=\{styles\.textLink\}>/);
 });
 
-test("exactly one h1, h2 sections, server-only rendering", () => {
+test("exactly one h1 and one h2; only the ledger is a client component", () => {
   const all = landingTsx.join("\n");
   assert.equal((all.match(/<h1\b/g) ?? []).length, 1);
-  assert.equal((all.match(/<h2\b/g) ?? []).length, 2);
-  for (const source of landingTsx) {
+  assert.equal((all.match(/<h2\b/g) ?? []).length, 1);
+  for (const source of [pageSource, stepsSource]) {
     assert.doesNotMatch(source, /["']use client["']/);
-    assert.doesNotMatch(source, /useState|useEffect|\bDate\b|Math\.random/);
+  }
+  for (const source of landingTsx) {
+    assert.doesNotMatch(source, /useEffect|\bDate\b|Math\.random/);
   }
 });
 
@@ -172,85 +202,124 @@ test("no transfer-count promises, testimonials or metrics in landing copy", () =
 // ---------- Style constraints ----------
 
 const ALLOWED_VARS = new Set([
-  "bg", "surface", "ink", "muted", "accent", "accent-ink", "border",
-  "t-fast", "ease", "gutter", "content",
+  "bg", "surface", "surface-alt", "ink", "muted", "accent", "accent-hover", "accent-ink", "border",
+  "t-fast", "t-base", "ease", "gutter", "content",
 ]);
 const SPACING = new Set([0, 4, 8, 12, 16, 24, 32, 48, 64, 80]);
 const cssNoComments = cssSource.replace(/\/\*[\s\S]*?\*\//g, "");
+const rule = (selector) => {
+  const m = cssNoComments.match(new RegExp(`(?:^|\\n)${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{[^}]*\\}`));
+  assert.ok(m, `rule ${selector} missing`);
+  return m[0];
+};
 
-test("colors come only from approved tokens", () => {
-  assert.doesNotMatch(cssNoComments, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|oklch\(|color-mix\(/i);
+test("colors come only from approved tokens; green is for meaning only", () => {
+  assert.doesNotMatch(cssNoComments, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|oklch\(|color-mix\(|gradient\(/i);
   for (const [, name] of cssNoComments.matchAll(/var\(--([\w-]+)\)/g)) {
     assert.ok(ALLOWED_VARS.has(name), `unexpected token --${name}`);
   }
-  // On the accent stage, text is accent-ink (never muted or alpha).
-  const stageRules = ["eyebrow", "headline", "lead", "ctaNote"].map((c) =>
-    cssNoComments.match(new RegExp(`\\.${c} \\{[^}]*\\}`))[0]
-  );
-  for (const rule of stageRules) assert.match(rule, /color: var\(--accent-ink\)/);
+  // No full-bleed green stage any more: accent backgrounds only on CTA, final step dot, positive bar.
+  const accentBgSelectors = [...cssNoComments.matchAll(/([^{}]+)\{[^}]*background: var\(--accent\);/g)].map((m) => m[1].trim());
+  assert.deepEqual(accentBgSelectors.sort(), [".barPos", ".cta", ".dotFinal"]);
+  assert.doesNotMatch(cssNoComments, /backdrop-filter|box-shadow/);
 });
 
 test("spacing values stay on the 4/8/12/16/24/32/48/64/80 scale", () => {
   const decl = /(?:^|\s)(margin(?:-[a-z]+)?|padding(?:-[a-z]+)?|gap|row-gap|column-gap):\s*([^;]+);/g;
   for (const [, prop, value] of cssNoComments.matchAll(decl)) {
     if (/calc\(/.test(value)) continue; // breakout margin-inline
+    if (value.trim() === "auto") continue; // flex push: start steps sit at the bottom of the intro column
     for (const token of value.trim().split(/\s+/)) {
-      if (token === "-40px") continue; // offsets layout.tsx py-10 (asserted below)
-      const n = Number(token.replace(/px$/, ""));
+      if (token === "40px" && value.trim() === "0 0 24px 40px") continue; // track indent = 28px dot + 12px gap
+      const n = Math.abs(Number(token.replace(/px$/, ""))); // -4px: hover surface bleed on expense rows
       assert.ok(SPACING.has(n), `${prop}: ${value}`);
     }
   }
 });
 
-test("typography minimums and headline scale", () => {
+test("typography minimums, headline scale and tabular figures", () => {
   for (const [, px] of cssNoComments.matchAll(/font-size:\s*(\d+)px/g)) {
     assert.ok(Number(px) >= 13, `font-size ${px}px below 13px`);
   }
-  assert.match(cssNoComments, /\.headline \{[^}]*font-size: 40px;[^}]*line-height: 1\.12;[^}]*font-weight: 800;[^}]*letter-spacing: -0\.035em;/);
-  assert.match(cssNoComments, /@media \(max-width: 359\.98px\) \{\s*\.headline \{\s*font-size: 36px;/);
-  assert.match(cssNoComments, /@media \(min-width: 1100px\) \{\s*\.headline \{\s*font-size: 64px;/);
+  assert.match(rule(".headline"), /font-size: 34px;[^}]*font-weight: 800;/);
+  assert.match(cssNoComments, /@media \(min-width: 640px\) \{\s*\.headline \{\s*font-size: 44px;/);
+  // The conclusion (transfer amount) is the largest number in the ledger.
+  assert.match(rule(".transferAmount"), /font-size: 24px;/);
   assert.match(cssNoComments, /font-variant-numeric: tabular-nums/);
 });
 
-test("layout: scrollbar-safe breakout, two columns at 960, no hidden overflow", () => {
+test("layout: scrollbar-safe width, 12 columns at 960 (5 + 7), no hidden overflow", () => {
   assert.match(cssNoComments, /--content: min\(1120px, calc\(100vw - 2 \* var\(--gutter\)\)\)/);
   assert.match(cssNoComments, /margin-inline: calc\(\(100% - var\(--content\)\) \/ 2\)/);
-  assert.match(cssNoComments, /grid-template-columns: minmax\(0, 0\.95fr\) minmax\(0, 1\.05fr\)/);
+  assert.match(cssNoComments, /grid-template-columns: repeat\(12, minmax\(0, 1fr\)\)/);
+  assert.match(cssNoComments, /grid-column: 1 \/ span 5;/);
+  assert.match(cssNoComments, /grid-column: 6 \/ span 7;/);
   assert.doesNotMatch(cssNoComments, /overflow(?:-x)?:\s*(?:hidden|clip)/);
   assert.doesNotMatch(cssNoComments, /(?:^|[\s;{])width:\s*100vw/);
-  // The -40px stage offset and 640 breakout depend on the unchanged layout wrapper.
   assert.match(layoutSource, /<div className="mx-auto w-full max-w-\[640px\] flex-1 px-4 py-10">\{children\}<\/div>/);
 });
 
-test("specimen card is a single surface: no shadow or border stacking", () => {
-  const rule = cssNoComments.match(/\.specimen \{[^}]*\}/g).join("\n");
-  assert.match(rule, /background: var\(--surface\)/);
-  assert.match(rule, /border-radius: 14px/);
-  assert.doesNotMatch(rule, /box-shadow|border:/);
+// task-20261105-002 r3: at >= 960px the expense controls and the last transfer must share
+// the first viewport (1366×768). Source-level guard; the actual bounding boxes are measured
+// in the browser (see docs/WorkLog.md).
+test("desktop: balanced columns, controls and result in one viewport, no inner scroll", () => {
+  const desktop = cssNoComments.match(/@media \(min-width: 960px\) \{([\s\S]*?)\n\}/g).join("\n");
+  // Both columns stretch to the same height; intro is no longer sticky.
+  assert.doesNotMatch(cssNoComments, /position:\s*sticky/);
+  assert.match(desktop, /\.intro \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*padding-block: 24px;/);
+  assert.match(desktop, /\.ledger \{\s*padding: 24px 32px;/);
+  assert.match(desktop, /\.flow \{[^}]*margin-top: auto;/);
+  // Vertical centering in tall windows, document scroll in short ones.
+  assert.match(desktop, /\.page \{[^}]*min-height: calc\(100svh - 48px\);[^}]*align-content: center;/);
+  // Rows stay >= 44px touch targets; result slot reserves the 2-transfer height so toggling never shifts layout.
+  assert.match(desktop, /\.expense,\s*\.balanceRow \{\s*min-height: 48px;/);
+  assert.match(desktop, /\.result \{[^}]*min-height: 101px;/);
+  assert.match(desktop, /\.transfer \{[^}]*min-height: 48px;[^}]*padding-block: 0;/); // 4 + 48 + 1 + 48 = 101
+  assert.match(specimenSource, /<div aria-live="polite" className=\{styles\.result\}>/);
+  // No font shrinking on desktop and no inner scrolling container.
+  assert.doesNotMatch(desktop, /font-size: (?:[0-9]|1[0-2])px/);
+  assert.doesNotMatch(cssNoComments, /overflow(?:-y)?:\s*(?:auto|scroll)|max-height/);
+  assert.match(cssNoComments, /@media \(min-width: 1184px\) \{\s*\.headline \{\s*font-size: 56px;/);
 });
 
-test("motion: only 150ms feedback transitions, reduced motion removes them", () => {
-  assert.doesNotMatch(cssNoComments, /@keyframes|animation/);
+test("ledger is a single surface: no shadow or border stacking", () => {
+  const r = cssNoComments.match(/\.ledger \{[^}]*\}/g).join("\n");
+  assert.match(r, /background: var\(--surface\)/);
+  assert.match(r, /border-radius: 14px/);
+  assert.doesNotMatch(r, /box-shadow|border:/);
+});
+
+test("motion: token durations, transform/opacity only, reduced motion removes it", () => {
   for (const [, value] of cssNoComments.matchAll(/transition:\s*([^;]+);/g)) {
     if (value.trim() === "none") continue;
-    assert.match(value, /var\(--t-fast\) var\(--ease\)/);
     assert.doesNotMatch(value, /\d+m?s/);
+    for (const part of value.split(",")) {
+      assert.match(part.trim(), /^(transform|opacity|background-color) var\(--t-(fast|base)\) var\(--ease\)$/);
+    }
   }
+  // Only one keyframe: the recalculation opacity flash.
+  assert.deepEqual([...cssNoComments.matchAll(/@keyframes (\w+)/g)].map((m) => m[1]), ["recalc"]);
+  assert.match(rule("@keyframes recalc"), /opacity/);
+  assert.doesNotMatch(rule("@keyframes recalc"), /transform|translate/);
   assert.match(globalsSource, /--t-fast: 150ms;/);
+  assert.match(globalsSource, /--t-base: 250ms;/);
   const reduced = cssNoComments.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*)\}\s*$/)[1];
-  assert.match(reduced, /transition: none;/);
+  assert.match(reduced, /\.barPos,\s*\.barNeg \{\s*transition: none;/);
+  assert.match(reduced, /\.fresh \{\s*animation: none;/);
   assert.match(reduced, /transform: none;/);
 });
 
-test("controls: pill CTA >= 48px with contrasting focus ring, 44px text link", () => {
-  const cta = cssNoComments.match(/\.cta \{[^}]*\}/)[0];
+test("controls: pill CTA >= 48px, 44px reset button, 56px expense rows", () => {
+  const cta = rule(".cta");
   assert.match(cta, /min-height: 52px/);
   assert.match(cta, /border-radius: 999px/);
-  assert.match(cta, /background: var\(--bg\)/);
-  assert.match(cta, /color: var\(--ink\)/);
-  assert.match(cssNoComments, /\.cta:focus-visible \{[^}]*outline: 3px solid var\(--accent-ink\)/);
+  assert.match(cta, /background: var\(--accent\)/);
+  assert.match(cta, /color: var\(--accent-ink\)/);
+  assert.match(cssNoComments, /\.cta:focus-visible \{[^}]*outline: 2px solid var\(--accent\)/);
   assert.match(cssNoComments, /\.cta:active \{/);
-  assert.match(cssNoComments, /\.textLink \{[^}]*min-height: 44px/);
+  assert.match(rule(".reset"), /min-height: 44px/);
+  assert.match(cssNoComments, /\.reset:disabled \{/);
+  assert.match(rule(".expense"), /min-height: 56px/);
 });
 
 // ---------- Contrast from the actual token values ----------
@@ -280,15 +349,15 @@ test("approved token values are unchanged", () => {
 });
 
 for (const [fg, bg, min] of [
-  ["accent-ink", "accent", 4.5], // stage text
-  ["ink", "bg", 4.5], // CTA label
-  ["bg", "accent", 3], // CTA shape against stage
-  ["accent-ink", "accent", 3], // CTA focus ring
+  ["accent-ink", "accent", 4.5], // CTA label
+  ["ink", "bg", 4.5], // headline
+  ["muted", "bg", 4.5], // lead, cta note, start steps
+  ["accent", "bg", 4.5], // eyebrow, 한눈에., step numbers, focus ring
   ["ink", "surface", 4.5],
   ["muted", "surface", 4.5],
   ["accent", "surface", 4.5], // label, 받을 돈, transfer amounts
-  ["muted", "bg", 4.5], // step bodies
-  ["accent", "bg", 4.5], // step numbers, global focus ring on text link
+  ["muted", "surface-alt", 4.5], // empty state, step dots
+  ["accent-ink", "accent", 3], // final step dot
 ]) {
   test(`contrast ${fg} on ${bg} >= ${min}`, () => {
     assert.ok(contrast(fg, bg) >= min, `${contrast(fg, bg).toFixed(2)}`);
