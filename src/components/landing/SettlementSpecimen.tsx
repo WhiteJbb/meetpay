@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import styles from "@/app/landing.module.css";
 import { computeSettlement } from "@/lib/settlement";
@@ -46,6 +46,7 @@ export default function SettlementSpecimen() {
   const [included, setIncluded] = useState<boolean[]>(ALL_ON);
   // 바뀐 숫자에 짧은 opacity 피드백을 주기 위한 키(첫 렌더에는 0 → 애니메이션 없음)
   const [revision, setRevision] = useState(0);
+  const firstCheckbox = useRef<HTMLInputElement>(null);
 
   const { count, total, balances, transfers } = settle(included);
   const people = EXAMPLE_PARTICIPANTS.length;
@@ -60,6 +61,8 @@ export default function SettlementSpecimen() {
   const reset = () => {
     setIncluded(ALL_ON);
     setRevision((r) => r + 1);
+    // 누르면 버튼이 비활성화되므로, 키보드 포커스가 문서 맨 앞으로 사라지지 않게 첫 지출로 옮긴다
+    firstCheckbox.current?.focus();
   };
 
   return (
@@ -89,6 +92,7 @@ export default function SettlementSpecimen() {
               <li key={expense.item}>
                 <label className={`${styles.expense} ${included[i] ? "" : styles.off}`}>
                   <input
+                    ref={i === 0 ? firstCheckbox : undefined}
                     type="checkbox"
                     checked={included[i]}
                     onChange={(event) => toggle(i, event.target.checked)}
@@ -178,32 +182,35 @@ export default function SettlementSpecimen() {
               <span className={`${styles.stepMeta} font-data`}>송금 {transfers.length}건</span>
             )}
           </h3>
-          <div key={`r${revision}`} className={fresh} aria-live="polite">
-            {count === 0 ? (
-              <p className={styles.empty}>
-                <strong>켜진 지출이 없어요.</strong> 지출을 하나 이상 켜면 보낼 금액이 나와요.
-              </p>
-            ) : transfers.length === 0 ? (
-              <p className={styles.empty}>
-                <strong>보낼 돈이 없어요.</strong> 모두 자기 몫만큼 냈어요.
-              </p>
-            ) : (
-              <ol className={styles.rows}>
-                {transfers.map((t) => (
-                  <li key={`${t.fromId}-${t.toId}`} className={styles.transfer}>
-                    <span className={styles.transferPair} aria-hidden="true">
-                      {t.fromName}
-                      <span className={styles.transferArrow}>→</span>
-                      {t.toName}
-                    </span>
-                    <span className="sr-only">
-                      {withSubjectParticle(t.fromName)} {t.toName}에게
-                    </span>
-                    <span className={`${styles.transferAmount} font-data`}>{formatWon(t.amount)}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
+          {/* 라이브 영역은 고정해 두고 안쪽만 다시 그려야 스크린리더가 바뀐 결과를 읽는다 */}
+          <div aria-live="polite">
+            <div key={`r${revision}`} className={fresh}>
+              {count === 0 ? (
+                <p className={styles.empty}>
+                  <strong>켜진 지출이 없어요.</strong> 지출을 하나 이상 켜면 보낼 금액이 나와요.
+                </p>
+              ) : transfers.length === 0 ? (
+                <p className={styles.empty}>
+                  <strong>보낼 돈이 없어요.</strong> 모두 자기 몫만큼 냈어요.
+                </p>
+              ) : (
+                <ol className={styles.rows}>
+                  {transfers.map((t) => (
+                    <li key={`${t.fromId}-${t.toId}`} className={styles.transfer}>
+                      <span className={styles.transferPair} aria-hidden="true">
+                        {t.fromName}
+                        <span className={styles.transferArrow}>→</span>
+                        {t.toName}
+                      </span>
+                      <span className="sr-only">
+                        {withSubjectParticle(t.fromName)} {t.toName}에게
+                      </span>
+                      <span className={`${styles.transferAmount} font-data`}>{formatWon(t.amount)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
           </div>
         </li>
       </ol>
